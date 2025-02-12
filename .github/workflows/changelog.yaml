@@ -1,0 +1,65 @@
+name: Generate Changelog
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'CHANGELOG.md'
+
+jobs:
+  changelog:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    name: Generate changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 取得所有歷史記錄
+
+      - name: Generate changelog
+        run: |
+          echo "# Changelog" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          
+          # Hack Examples
+          echo "### 💡 Hack Examples" >> CHANGELOG.md
+          git log --pretty=format:"* %ad - %s" --date=short | grep "^* .*eg:" >> CHANGELOG.md || true
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+
+          # Features
+          echo "### 🚀 Features" >> CHANGELOG.md
+          git log --pretty=format:"* %ad - %s" --date=short | grep "^* .*feat:" >> CHANGELOG.md || true
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          
+          # Bug Fixes
+          echo "### 🐛 Bug Fixes" >> CHANGELOG.md
+          git log --pretty=format:"* %ad - %s" --date=short | grep "^* .*fix:" >> CHANGELOG.md || true
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          
+          # Documentation
+          echo "### 📝 Documentation" >> CHANGELOG.md
+          git log --pretty=format:"* %ad - %s" --date=short | grep "^* .*docs:" >> CHANGELOG.md || true
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          
+          # Other Changes
+          echo "### 🔧 Other Changes" >> CHANGELOG.md
+          git log --pretty=format:"* %ad - %s" --date=short | grep -v "feat:\|fix:\|docs:\|eg:\|skip:\|chore:" >> CHANGELOG.md || true
+
+      - name: Amend commit with changelog
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          if [[ -n "$(git status --porcelain CHANGELOG.md)" ]]; then
+            git add CHANGELOG.md
+            LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
+            git commit --amend -m "$LAST_COMMIT_MSG [skip ci]"
+            git push --force
+          fi
